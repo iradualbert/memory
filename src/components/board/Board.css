@@ -1,0 +1,38 @@
+.board {
+    margin: 20px;
+    background-color: white;
+    width: 1000px;
+    /* height: 100%; */
+    display: grid;
+    grid-template-columns: repeat(20, 50px);
+    /* grid-template-rows: repeat(11, 50px); */
+    grid-gap: 0px;
+    border-top: 1px solid #f7f7f7;
+    border-left: 1px solid #f7f7f7;
+}
+
+.box {
+    height: 50px;
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    border-bottom: 1px solid #f7f7f7;
+    border-right: 1px solid #f7f7f7;
+    
+}
+
+.occupied {
+    background-color: grey;
+}
+
+.address {
+    font-size: 8px;
+    position: absolute;
+    right: 2px;
+    bottom: -5px;
+    
+}
+

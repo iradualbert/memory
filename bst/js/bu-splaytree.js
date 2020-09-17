@@ -1,0 +1,372 @@
+"use strict";
+
+class Node extends BaseNode {
+  constructor(val) {
+    super(val);
+  }
+}
+
+class BottomUpSplayTree {
+  constructor() {
+    this.clear();
+    this.update_nodes = [];
+    this.current_nodes = [];
+  }
+
+  clear() {
+    this.root = null;
+    this.cur = null;
+  }
+
+  find(x, need_to_add) {
+    this.update_nodes = [];
+    this.current_nodes = [];
+    if(this.root === null) {
+      this.cur = null;
+      if(need_to_add) {
+        this.root = new Node(x);
+        return this.root;
+      }
+      return null;
+    }
+    let node = this.root;
+    while(node.val !== x) {
+      this.update_nodes.push(node);
+      if(x < node.val) {
+        if(node.left === null) break;
+        node = node.left;
+      } else {
+        if(node.right === null) break;
+        node = node.right;
+      }
+    }
+    if(x === node.val) {
+      this.cur = node;
+      return (need_to_add ? null : node);
+    }
+
+    if(need_to_add) {
+      const new_node = new Node(x);
+      if(x < node.val) {
+        node.set_left(new_node);
+      } else {
+        node.set_right(new_node);
+      }
+      this.cur = new_node;
+      return new_node;
+    }
+    this.cur = node;
+    return node;
+  }
+
+  get_update_nodes() {
+    return this.update_nodes;
+  }
+
+  get_current_nodes() {
+    return this.current_nodes.filter(node => node !== null);
+  }
+
+  splaying() {
+    while(splaying_step());
+  }
+
+  splaying_step() {
+    this.current_nodes = [];
+    if(this.cur === null) {
+      return false;
+    }
+    const x = this.cur;
+    if(x.prt === null) {
+      this.root = x;
+      this.cur = null;
+      return false;
+    }
+    const y = x.prt;
+    if(y.prt === null) {
+      this.current_nodes = [x, y];
+      // zig
+      x.prt = null;
+      if(y.is_left(x)) {
+        y.rotate_right();
+      } else {
+        y.rotate_left();
+      }
+      this.root = x;
+      this.cur = null;
+      return true;
+    }
+    const z = y.prt;
+    this.current_nodes = [x, y, z];
+    if(y.is_left(x)) {
+      if(z.is_left(y)) {
+        // zig-zig
+        z.rotate_right();
+        y.rotate_right();
+      } else {
+        // zig-zag
+        y.rotate_right();
+        z.rotate_left();
+      }
+    } else {
+      if(z.is_left(y)) {
+        // zig-zag
+        y.rotate_left();
+        z.rotate_right();
+      } else {
+        // zig-zig
+        z.rotate_left();
+        y.rotate_left();
+      }
+    }
+    if(x.prt === null) {
+      this.root = x;
+      this.cur = null;
+      return false;
+    }
+    return true;
+  }
+}
+
+window.onload = () => {
+  const tree = new BottomUpSplayTree();
+
+  const node_view = {}, node_map = {};
+  let tl = null;
+
+  const canvas = document.querySelector("svg.canvas");
+  const nodes = document.querySelector(".nodes");
+  const edges = document.querySelector(".edges");
+  const slider = document.querySelector(".anime-slider");
+  slider.oninput = ((el) => {
+    if(tl !== null) {
+      tl.seek(tl.duration * (slider.value / 100));
+    }
+  });
+  let delete_n_id = null;
+
+  const add_node = (v, node) => {
+    const n_id = node.id;
+    nodes.appendChild(createNode(v, n_id));
+    edges.appendChild(createEdge(v, n_id));
+    const d_node = document.querySelector(`g.node${n_id}`);
+    const d_edge = document.querySelector(`path.edge${n_id}`);
+
+    node_view[v] = {
+      "nid": n_id,
+      "node": d_node,
+      "edge": d_edge,
+    };
+    node_map[n_id] = node;
+  };
+
+  const change_canvas_size = (width, height) => {
+    const style = canvas.style;
+    style["width"] = `${width}px`;
+    style["height"] = `${height}px`;
+  };
+
+  const translate_obj = (result, t_node, c_nodes) => {
+    default_translate_obj(node_map, result, tl);
+    const t_view = (t_node !== null ? node_view[t_node.val].node : null);
+    const c_views = (c_nodes !== null ? c_nodes.map(node => node_view[node.val].node) : []);
+    tl.add({
+      targets: ['circle.node-circle'],
+      duration: 1000,
+      changeBegin: (tl) => {
+        begin_change_current_color(t_view, c_views);
+      },
+      changeComplete: (tl) => {
+        end_change_current_color(t_view, c_views);
+      },
+    }, '-=1000');
+  }
+
+  const init_timeline = () => {
+    if(delete_n_id !== null) {
+      const n_id = delete_n_id;
+      removeNode(n_id);
+      removeEdge(n_id);
+      delete_n_id = null;
+    }
+    if(tl !== null) {
+      tl.seek(tl.duration);
+    }
+    tl = anime.timeline({
+      duration: 1000,
+      update: (anim) => {
+        slider.value = tl.progress;
+      },
+    });
+  };
+
+  const remove_tree_node = (v) => {
+    const node_num = Object.keys(node_view).length;
+
+    init_timeline();
+
+    const t_node = tree.find(v, false);
+    const updates = [];
+
+    let max_depth = 0;
+    let updated = true;
+    while(true) {
+      const result = traverse(tree.root);
+
+      max_depth = Math.max(max_depth, result.depth);
+
+      const c_nodes = tree.get_current_nodes();
+      if(t_node.val === v) {
+        translate_obj(result.ps, t_node, c_nodes);
+      } else {
+        translate_obj(result.ps, null, c_nodes);
+      }
+      if(!updated) {
+        break;
+      }
+      updated = tree.splaying_step();
+    }
+    updates.push(...tree.get_update_nodes());
+
+    const node = tree.root;
+    let v_n_id = null;
+    let target_node = null;
+
+    if(node.val === v) {
+      const left = node.remove_left(), right = node.remove_right();
+
+      const result_l = traverse(left);
+      max_depth = Math.max(max_depth, result_l.depth);
+
+      v_n_id = node.id;
+      target_node = node_view[v].node;
+
+      hide_nodes(tl, [`g.node${v_n_id}`], [`path.edge${v_n_id}`]);
+
+      if(right !== null) {
+        tree.root = right;
+
+        if(right.left !== null) {
+          tree.find(v, false);
+
+          let updated = true;
+          while(true) {
+            const result = {};
+            const result_r = traverse(tree.root);
+
+            let cursor = 0;
+            for(let n_id in result_l.ps) {
+              const [x, y] = result_l.ps[n_id];
+              result[n_id] = [x, y + 1];
+            }
+            cursor += Object.keys(result_l.ps).length + 2;
+            result[v_n_id] = [cursor, 0];
+            cursor += 2;
+            for(let n_id in result_r.ps) {
+              const [x, y] = result_r.ps[n_id];
+              result[n_id] = [cursor + x, y + 1];
+            }
+            max_depth = Math.max(max_depth, result_r.depth);
+
+            const c_nodes = tree.get_current_nodes();
+            translate_obj(result, node, c_nodes);
+            if(!updated) {
+              break;
+            }
+            updated = tree.splaying_step();
+          }
+          updates.push(...tree.get_update_nodes());
+        }
+
+        tree.root.set_left(left);
+        {
+          const result_m = traverse(tree.root);
+          const result = result_m.ps;
+          max_depth = Math.max(max_depth, result_m.depth);
+          result[v_n_id] = [0, 0];
+          const c_nodes = tree.get_current_nodes();
+          translate_obj(result, node, c_nodes);
+        }
+      } else {
+        tree.root = left;
+        if(left !== null) {
+          const result_m = traverse(tree.root);
+          const result = result_m.ps;
+          max_depth = Math.max(max_depth, result_m.depth);
+          result[v_n_id] = [0, 0];
+          const c_nodes = tree.get_current_nodes();
+          translate_obj(result, node, c_nodes);
+        }
+      }
+
+      delete node_view[v];
+      delete node_map[v_n_id];
+    }
+
+    const update_nodes = updates.map(node => node_view[node.val].node);
+    tl.changeBegin = () => {
+      begin_change_color(target_node, update_nodes);
+    };
+    tl.changeComplete = () => {
+      end_change_color(target_node, update_nodes);
+    };
+    delete_n_id = v_n_id;
+
+    change_canvas_size(
+      (node_num+5) * NODE_W + BASE_X*2,
+      (max_depth+1) * NODE_H + BASE_Y*2
+    );
+  };
+
+  const add_tree_node = (v) => {
+    init_timeline();
+
+    const result_f = traverse(tree.root);
+    let max_depth = result_f.depth;
+    translate_obj(result_f.ps, null, null);
+
+    let node = tree.find(v, true);
+    if(node !== null) {
+      add_node(v, node);
+    } else {
+      node = (node_view[v] ? node_map[node_view[v].nid] : null);
+    }
+
+    let updated = true;
+    while(true) {
+      const result = traverse(tree.root);
+
+      max_depth = Math.max(max_depth, result.depth);
+
+      const c_nodes = tree.get_current_nodes();
+      translate_obj(result.ps, node, c_nodes);
+      if(!updated) {
+        break;
+      }
+      updated = tree.splaying_step();
+    }
+
+    const target_node = node_view[v].node;
+    const update_nodes = tree.get_update_nodes().map(node => node_view[node.val].node);
+
+    tl.changeBegin = () => {
+      begin_change_color(target_node, update_nodes);
+    };
+    tl.changeComplete = () => {
+      end_change_color(target_node, update_nodes);
+    };
+
+    const node_num = Object.keys(node_view).length;
+    change_canvas_size(
+      (node_num+1) * NODE_W + BASE_X*2,
+      (max_depth+1) * NODE_H + BASE_Y*2
+    );
+  };
+
+  set_add_random(add_tree_node);
+  set_remove_random(remove_tree_node, node_view);
+  set_add_inc(add_tree_node);
+  set_add_dec(add_tree_node);
+  set_add_value(add_tree_node);
+  set_remove_value(remove_tree_node);
+};

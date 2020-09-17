@@ -1,0 +1,32 @@
+.bst {
+    position: relative;
+}
+.node {
+    position: absolute;
+    height: 30px;
+    width: 30px;
+    border-radius: 50%;
+    border: 1px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pointer {
+    position: absolute;
+    height: 80px;
+    width: 2px;
+    background-color: yellowgreen;
+    top: 15px;
+    transform-origin: top;
+   
+}
+
+.left {
+    right: 30px;
+    transform: rotate(70deg);
+}
+.right {
+    left: 30px;
+    transform: rotate(-70deg);
+}

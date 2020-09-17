@@ -1,0 +1,12 @@
+Generate Random Array, String, Integer, Double
+Add
+push
+shift
+unshift
+peek
+prepend
+insertAt
+getAt
+removeAt
+mutate
+concat
